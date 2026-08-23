@@ -44,6 +44,27 @@ image.BaseImageName;           // see the caveat below
 
 **Why it exists:** a base image is usually the single largest source of inherited CVEs in a deployed artefact, and unlike a package it is one line in a Dockerfile — the highest leverage per fix available. The publish date of the base tag is the only reliable way to say how old that foundation is, and running a full vulnerability scan to learn one date would be an absurd price.
 
+### Inspecting a base image: force the registry
+
+```csharp
+var plan = Trivy.InspectImage(s => s
+    .SetImageRef("mcr.microsoft.com/dotnet/aspnet:10.0-alpine")
+    .SetRemoteOnly());          // <- not optional for a base-image lookup
+```
+
+Trivy's source order is `docker,containerd,podman,remote`, so a tag your daemon has cached is answered *from that cache* — the date the cache was filled, not the date the tag points at now.
+
+Measured on one machine:
+
+| Source | Published | Alpine |
+|---|---|---|
+| daemon cache | 2026-05-12 | 3.23.4 |
+| registry | 2026-08-10 | 3.24.1 |
+
+Ninety days, in the direction that makes a current base image look neglected — and it fails silently, since you get back a date of the right shape that is simply wrong.
+
+Leave `RemoteOnly` off when inspecting an image you just built and have not pushed: there is nothing in the registry to read.
+
 ### The base-image caveat
 
 `BaseImageName` and `BaseImageDigest` come from the standard OCI annotations `org.opencontainers.image.base.name` / `.base.digest`, and **they are frequently absent**. BuildKit only sets them under some build configurations; neither the official .NET images nor Alpine carry them.

@@ -10,6 +10,8 @@ All notable changes recorded here. [Keep a Changelog](https://keepachangelog.com
 
   Motivated by base-image age scoring downstream (tamp.findings TFND-134). A base image is usually the single largest source of inherited CVEs in a deployed artefact, and the publish date of its tag is the only reliable way to say how old that foundation is.
 
+  `TrivyImageInspectSettings.RemoteOnly` (`--image-src remote`) forces a registry read. Trivy prefers a local daemon copy, so a cached tag answers with the date the cache was filled rather than the date the tag points at now — measured at **ninety days** on `aspnet:10.0-alpine` (daemon said 2026-05-12 / alpine 3.23.4, registry said 2026-08-10 / alpine 3.24.1). Set it for base-image lookups; leave it off for an image you have just built and not yet pushed.
+
   `BaseImageName` / `BaseImageDigest` come from the standard OCI annotations and are **null when absent** rather than inferred from layer history — BuildKit only sets them under some configurations, and a guess would reach a dashboard as a fact. The parser is deliberately tolerant: Trivy's report shape has moved across its 0.x line, so every field is optional and an unfamiliar report yields nulls rather than taking an adopter's build down.
 
 ### Changed
