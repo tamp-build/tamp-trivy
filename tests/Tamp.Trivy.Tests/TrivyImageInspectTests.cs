@@ -99,6 +99,41 @@ public class TrivyImageInspectTests
     }
 
     [Fact]
+    public void Remote_Only_Forces_A_Registry_Read()
+    {
+        // The trap this exists for: Trivy prefers a local daemon copy, so a
+        // cached tag answers with the date the cache was filled rather than the
+        // date the tag points at now. Measured at ninety days on a real machine
+        // for aspnet:10.0-alpine — in the direction of making a current base
+        // image look neglected.
+        var args = Trivy.InspectImage(s => s.SetImageRef("x:y").SetRemoteOnly()).Arguments.ToList();
+
+        Assert.Equal("remote", args[args.IndexOf("--image-src") + 1]);
+    }
+
+    [Fact]
+    public void Remote_Only_Wins_Over_An_Explicit_Source_List()
+    {
+        // Setting both is contradictory, and the safe reading of a
+        // contradiction here is the one that cannot answer from a stale cache.
+        var args = Trivy.InspectImage(s => s
+            .SetImageRef("x:y")
+            .AddImageSource("docker")
+            .SetRemoteOnly()).Arguments.ToList();
+
+        Assert.Equal("remote", args[args.IndexOf("--image-src") + 1]);
+        Assert.DoesNotContain("docker", args);
+    }
+
+    [Fact]
+    public void Remote_Only_Is_Off_By_Default()
+    {
+        // Because inspecting an image you just built and have not pushed has
+        // nothing in the registry to read.
+        Assert.DoesNotContain("--image-src", Trivy.InspectImage(s => s.SetImageRef("x:y")).Arguments);
+    }
+
+    [Fact]
     public void A_Target_Is_Required()
     {
         Assert.Throws<InvalidOperationException>(() => Trivy.InspectImage(_ => { }));

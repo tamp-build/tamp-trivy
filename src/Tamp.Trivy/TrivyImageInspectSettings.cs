@@ -43,6 +43,27 @@ public sealed class TrivyImageInspectSettings
     public List<string> ImageSources { get; } = new();
 
     /// <summary>
+    /// Read the image from the REGISTRY, ignoring any local copy.
+    ///
+    /// Set this when asking "when was this tag published" — which is what a
+    /// base-image age check is asking. Trivy's default source order is
+    /// <c>docker,containerd,podman,remote</c>, so a tag the local daemon
+    /// happens to have cached is answered from that cache, and the answer is
+    /// the date the cache was filled rather than the date the tag currently
+    /// points at.
+    ///
+    /// That failure is silent and plausible, which is what makes it worth its
+    /// own property. Measured on a real machine: <c>aspnet:10.0-alpine</c> read
+    /// from a stale daemon cache reported a publish date of 2026-05-12, while
+    /// the registry reported 2026-08-10 for the same tag — a ninety-day error,
+    /// in the direction of making a current base image look neglected.
+    ///
+    /// Leave it off when inspecting an image you have just built and not yet
+    /// pushed: there is nothing in the registry to read.
+    /// </summary>
+    public bool RemoteOnly { get; set; }
+
+    /// <summary>
     /// Suppress progress and log output. Defaults to <c>true</c>: an inspect is
     /// nearly always machine-read, and a progress bar interleaved into stdout
     /// is what turns a parse into a bug report.
@@ -63,6 +84,9 @@ public sealed class TrivyImageInspectSettings
     public TrivyImageInspectSettings SetOutputFile(string? p) { OutputFile = p; return this; }
     public TrivyImageInspectSettings SetPlatform(string? v) { Platform = v; return this; }
     public TrivyImageInspectSettings AddImageSource(string source) { ImageSources.Add(source); return this; }
+
+    /// <summary>Read from the registry only — see <see cref="RemoteOnly"/>.</summary>
+    public TrivyImageInspectSettings SetRemoteOnly(bool v = true) { RemoteOnly = v; return this; }
     public TrivyImageInspectSettings SetQuiet(bool v) { Quiet = v; return this; }
     public TrivyImageInspectSettings SetSkipVersionCheck(bool v) { SkipVersionCheck = v; return this; }
     public TrivyImageInspectSettings SetWorkingDirectory(string? cwd) { WorkingDirectory = cwd; return this; }
@@ -104,7 +128,15 @@ public sealed class TrivyImageInspectSettings
             args.Add(Platform!);
         }
 
-        if (ImageSources.Count > 0)
+        // RemoteOnly wins over an explicit source list. Setting both is
+        // contradictory, and the safe reading of a contradiction here is the
+        // one that cannot silently answer from a stale cache.
+        if (RemoteOnly)
+        {
+            args.Add("--image-src");
+            args.Add("remote");
+        }
+        else if (ImageSources.Count > 0)
         {
             args.Add("--image-src");
             args.Add(string.Join(",", ImageSources));

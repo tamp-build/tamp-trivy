@@ -48,6 +48,14 @@ public static class Trivy
     /// tag is the only reliable way to say how old the foundation of a deployed
     /// artefact is, and running a full scan to learn one date would be an
     /// absurd price.
+    ///
+    /// <para>
+    /// When inspecting a BASE image by tag, set
+    /// <see cref="TrivyImageInspectSettings.RemoteOnly"/>. Trivy prefers a
+    /// local daemon copy, so a cached tag answers with the date the cache was
+    /// filled rather than the date the tag points at now — a silent, plausible
+    /// error measured at ninety days on a real machine.
+    /// </para>
     /// </summary>
     public static CommandPlan InspectImage(Action<TrivyImageInspectSettings> configure)
     {
