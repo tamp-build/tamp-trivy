@@ -7,6 +7,7 @@ namespace Tamp.Trivy;
 ///   <item><see cref="ScanImage"/> — <c>trivy image</c>; container OS-package + lockfile vulnerabilities.</item>
 ///   <item><see cref="ScanConfig"/> — <c>trivy config</c>; IaC misconfiguration scan (Terraform / Kubernetes / Dockerfile / CloudFormation / Helm / Ansible).</item>
 ///   <item><see cref="ScanFilesystem"/> — <c>trivy fs</c>; source-tree secrets + IaC + lockfile vulns.</item>
+///   <item><see cref="InspectImage"/> — <c>trivy image</c> with no scanners; a metadata read, not a scan.</item>
 /// </list>
 /// </summary>
 /// <remarks>
@@ -30,6 +31,28 @@ public static class Trivy
     {
         if (configure is null) throw new ArgumentNullException(nameof(configure));
         var settings = new TrivyConfigSettings();
+        configure(settings);
+        return settings.ToCommandPlan();
+    }
+
+    /// <summary>
+    /// Read an image's metadata without scanning it (TAM-282).
+    ///
+    /// <c>trivy image --format json --scanners ""</c>: Trivy reads the image
+    /// config and emits the <c>Metadata</c> block without running vulnerability,
+    /// secret or misconfiguration detection — and without needing the
+    /// vulnerability database, which is the expensive part.
+    ///
+    /// Pair with <see cref="TrivyImageMetadata.Parse"/> to get the digest, the
+    /// labels and, above all, the creation timestamp. The age of a base image
+    /// tag is the only reliable way to say how old the foundation of a deployed
+    /// artefact is, and running a full scan to learn one date would be an
+    /// absurd price.
+    /// </summary>
+    public static CommandPlan InspectImage(Action<TrivyImageInspectSettings> configure)
+    {
+        if (configure is null) throw new ArgumentNullException(nameof(configure));
+        var settings = new TrivyImageInspectSettings();
         configure(settings);
         return settings.ToCommandPlan();
     }
