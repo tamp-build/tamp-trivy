@@ -34,7 +34,7 @@
   </PropertyGroup>
 
   <PropertyGroup Label="Tamp central version (TAM-254 migration — picks up at 1.11.2 from where main was shipping 1.11.1)">
-    <Version>1.11.2</Version>
+    <Version>1.11.3</Version>
   </PropertyGroup>
 
 </Project>
